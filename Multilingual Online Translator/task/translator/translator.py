@@ -10,12 +10,21 @@ class Translator:
     """A simple translator class."""
 
     languages = {
-        "en": "English",
-        "fr": "French"
+        '1': 'german',
+        '2': 'english',
+        '3': 'spanish',
+        '4': 'french',
+        '5': 'japanese',
+        '6': 'dutch',
+        '7': 'polish',
+        '8': 'portuguese',
+        '9': 'romanian',
+        '10': 'russian',
     }
 
-    def __init__(self, language: str, word: str):
-        self.language = language
+    def __init__(self, lang_from: str, lang_to: str, word: str):
+        self.lang_from = lang_from
+        self.lang_to = lang_to
         self.word = word
         self._response = self._get_response()
 
@@ -23,14 +32,7 @@ class Translator:
         """Construct the query URL based on the language and word."""
 
         host = "https://www.linguee.com"
-        direction = ""
-
-        if self.language == "en":
-            direction = "french-english"
-        elif self.language == "fr":
-            direction = "english-french"
-        else:
-            raise ValueError("Unsupported language. Use 'en' for English or 'fr' for French.")
+        direction = f"{self.lang_from}-{self.lang_to}"
 
         return f"{host}/{direction}/search?query={self.word}"
 
@@ -59,7 +61,10 @@ class Translator:
             self._get_response()
         soup = BeautifulSoup(self._response.text, 'html.parser')
         div_examples = soup.find('div', class_='example_lines inexact')
-        examples = div_examples.find_all('a', class_='dictLink')
+        try:
+            examples = div_examples.find_all('a', class_='dictLink')
+        except AttributeError:
+            examples = []
 
         div_featured = soup.find('div', class_='example line')
         try:
@@ -73,14 +78,22 @@ class Translator:
 def get_translator() -> Translator:
     """Prompt the user for translation language and word, and return a Translator instance."""
 
-    print(
-        "Type \"en\" if you want to translate from French into English, "
-        "or \"fr\" if you want to translate from English into French:")
-    language = input()
+    print("Hello, welcome to translator. Translator supports:")
+    for key, value in Translator.languages.items():
+        print(f"{key}. {value.capitalize()}")
+
+    print("Type the number of your language:")
+    lang_from = input()
+    lang_from = Translator.languages.get(lang_from, 'english')
+
+    print("Type the number of language you want to translate to:")
+    lang_to = input()
+    lang_to = Translator.languages.get(lang_to, 'english')
+
     print("Type the word you want to translate:")
     word = input()
-    print(f"You chose \"{language}\" as a language to translate \'{word}\' to.")
-    return Translator(language, word)
+
+    return Translator(lang_from, lang_to, word)
 
 
 def main():
@@ -96,14 +109,13 @@ def print_translations(tr: Translator):
     """
 
     # print translation
-    lang = Translator.languages[tr.language]
-    print(f"{lang} Translations:")
+    print(f"{tr.lang_to} Translations:")
     translations = tr.get_translations()
     for t in translations:
         print(t)
 
     # print examples
-    print(f"\n{lang} Examples:")
+    print(f"\n{tr.lang_to} Examples:")
     examples = tr.get_examples()
     for i in range(len(examples)):
         print(examples[i])
