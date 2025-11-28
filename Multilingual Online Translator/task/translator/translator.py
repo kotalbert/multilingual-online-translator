@@ -1,6 +1,9 @@
 """Multilingual Online Translator Module"""
 
+import re
+
 import requests
+from bs4 import BeautifulSoup
 
 
 class Translator:
@@ -54,6 +57,20 @@ def main():
         print("200 OK")
     else:
         response.raise_for_status()
+    print("Translations")
+    soup = BeautifulSoup(response.text, 'html.parser')
+
+    # print translation
+    translations = soup.find_all('a', class_='dictLink')
+    trans_texts = [translation.text for translation in translations]
+    print(trans_texts)
+
+    # print context
+    contexts_to = soup.find_all('span', class_='tag_t')
+    contexts = soup.find_all('span', class_=re.compile(r'tag_[ts]$'))
+    context_texts = [context.text for context in contexts]
+    print(context_texts)
+
 
 
 if __name__ == "__main__":
