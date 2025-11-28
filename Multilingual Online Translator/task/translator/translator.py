@@ -1,9 +1,8 @@
 """Multilingual Online Translator Module"""
 
-import re
-
 import requests
 from bs4 import BeautifulSoup
+from requests import Response
 
 
 class Translator:
@@ -20,9 +19,9 @@ class Translator:
         direction = ""
 
         if self.language == "en":
-            direction = "english-french"
-        elif self.language == "fr":
             direction = "french-english"
+        elif self.language == "fr":
+            direction = "english-french"
         else:
             raise ValueError("Unsupported language. Use 'en' for English or 'fr' for French.")
 
@@ -53,6 +52,16 @@ def get_translator() -> Translator:
 def main():
     tr = get_translator()
     response = tr.get_response()
+    print_translations(response)
+
+
+def print_translations(response: Response):
+    """
+    Extract and print translations and examples from the response.
+
+    :param response:
+    """
+
     if response.ok:
         print("200 OK")
     else:
@@ -60,17 +69,17 @@ def main():
     print("Translations")
     soup = BeautifulSoup(response.text, 'html.parser')
 
-    # print translation
-    translations = soup.find_all('a', class_='dictLink')
+    # find translation
+    div_translation = soup.find('div', class_='translation_lines')
+    translations = div_translation.find_all('a', class_='dictLink')
     trans_texts = [translation.text for translation in translations]
     print(trans_texts)
 
-    # print context
-    contexts_to = soup.find_all('span', class_='tag_t')
-    contexts = soup.find_all('span', class_=re.compile(r'tag_[ts]$'))
-    context_texts = [context.text for context in contexts]
-    print(context_texts)
-
+    # find examples
+    div_examples = soup.find('div', class_='example_lines inexact')
+    examples = div_examples.find_all('a', class_='dictLink')
+    examples_texts = [example.text for example in examples]
+    print(examples_texts)
 
 
 if __name__ == "__main__":
