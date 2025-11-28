@@ -1,18 +1,25 @@
 """Multilingual Online Translator Module"""
 
+import re
+
 import requests
 from bs4 import BeautifulSoup
-from requests import Response
 
 
 class Translator:
     """A simple translator class."""
 
+    languages = {
+        "en": "English",
+        "fr": "French"
+    }
+
     def __init__(self, language: str, word: str):
         self.language = language
         self.word = word
+        self._response = self._get_response()
 
-    def get_query_url(self):
+    def _get_query_url(self):
         """Construct the query URL based on the language and word."""
 
         host = "https://www.linguee.com"
@@ -27,13 +34,40 @@ class Translator:
 
         return f"{host}/{direction}/search?query={self.word}"
 
-    def get_response(self) -> requests.Response:
+    def _get_response(self) -> requests.Response:
         """Send a GET request to the constructed URL and return the response."""
 
-        url = self.get_query_url()
+        url = self._get_query_url()
         headers = {'User-Agent': 'Mozilla/5.0 AppleWebKit/537.36 Chrome/93.0.4577.82 Safari/537.36'}
         response = requests.get(url, headers=headers)
+        if response.ok:
+            print("200 OK")
+        else:
+            response.raise_for_status()
         return response
+
+    def get_translations(self) -> list[str]:
+        if self._response is None:
+            self._get_response()
+        soup = BeautifulSoup(self._response.text, 'html.parser')
+        div_translation = soup.find('div', class_='translation_lines')
+        translations = div_translation.find_all('a', class_='dictLink')
+        return [translation.text for translation in translations]
+
+    def get_examples(self) -> list[str]:
+        if self._response is None:
+            self._get_response()
+        soup = BeautifulSoup(self._response.text, 'html.parser')
+        div_examples = soup.find('div', class_='example_lines inexact')
+        examples = div_examples.find_all('a', class_='dictLink')
+
+        div_featured = soup.find('div', class_='example line')
+        try:
+            examples_featured = div_featured.find_all('span', class_=re.compile('^tag_[ts]$'))
+        except AttributeError:
+            examples_featured = []
+        examples.extend(examples_featured)
+        return [example.text for example in examples]
 
 
 def get_translator() -> Translator:
@@ -51,35 +85,30 @@ def get_translator() -> Translator:
 
 def main():
     tr = get_translator()
-    response = tr.get_response()
-    print_translations(response)
+    print_translations(tr)
 
 
-def print_translations(response: Response):
+def print_translations(tr: Translator):
     """
-    Extract and print translations and examples from the response.
+    Print translations and examples from the response.
 
-    :param response:
+    :param tr: Translator object to get the translations and examples from
     """
 
-    if response.ok:
-        print("200 OK")
-    else:
-        response.raise_for_status()
-    print("Translations")
-    soup = BeautifulSoup(response.text, 'html.parser')
+    # print translation
+    lang = Translator.languages[tr.language]
+    print(f"{lang} Translations:")
+    translations = tr.get_translations()
+    for t in translations:
+        print(t)
 
-    # find translation
-    div_translation = soup.find('div', class_='translation_lines')
-    translations = div_translation.find_all('a', class_='dictLink')
-    trans_texts = [translation.text for translation in translations]
-    print(trans_texts)
-
-    # find examples
-    div_examples = soup.find('div', class_='example_lines inexact')
-    examples = div_examples.find_all('a', class_='dictLink')
-    examples_texts = [example.text for example in examples]
-    print(examples_texts)
+    # print examples
+    print(f"\n{lang} Examples:")
+    examples = tr.get_examples()
+    for i in range(len(examples)):
+        print(examples[i])
+        if i % 2 != 0:
+            print()
 
 
 if __name__ == "__main__":
